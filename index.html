@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мапа FREEWAY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#F5F7FB; --surface:#FFFFFF; --fg:#14213D; --muted:#566079; --line:#DCE2EC;
+  --accent:#1F5BFF; --accent-soft:#E6EDFF; --sun:#FFD84D;
+  --s5:#0E9F5C; --s4:#6CBF2B; --s3:#F2B705; --s2:#F2711C; --s1:#DE3528;
+  --display:'Unbounded', 'Manrope', system-ui, sans-serif;
+  --body:'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#0F1420; --surface:#171E2D; --fg:#ECF0F8; --muted:#A3AEC4; --line:#2A3448;
+  --accent:#6F95FF; --accent-soft:#1D2A4D;
+  --s5:#22B872; --s4:#7FD13B; --s3:#F5C21B; --s2:#F7853A; --s1:#F0503F;
+  color-scheme:dark }}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.5}
+.wrap{max-width:1240px; margin:0 auto; padding:24px 20px 48px; display:flex; flex-direction:column; gap:22px}
+@media (max-width:520px){ .wrap{padding-left:16px; padding-right:16px} }
+header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px}
+.brand{display:flex; align-items:center; gap:14px}
+.brand h1{margin:0; font-family:var(--display); font-weight:800; font-size:30px; letter-spacing:-.5px; line-height:1}
+.brand h1 span{color:var(--s1)} .brand h1 b{color:var(--accent)}
+.brand p{margin:4px 0 0; color:var(--muted); font-weight:600; font-size:14px}
+.demo{font-size:13px; font-weight:700; background:var(--sun); color:#14213D; padding:6px 12px; border-radius:999px}
+.stats{display:flex; flex-wrap:wrap; gap:10px}
+.stat{display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:6px 14px 6px 8px; font-weight:700; font-size:14px}
+.stat i{width:14px; height:14px; border-radius:50%; display:inline-block}
+.mapgrid{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start}
+@media (max-width:900px){ .mapgrid{grid-template-columns:minmax(0,1fr)} }
+.mapbox{position:relative; border:1px solid var(--line); border-radius:18px; overflow:hidden; scroll-margin-top:12px; background:var(--surface)}
+#map{height:560px; width:100%}
+@media (max-width:600px){ #map{height:420px} }
+.allbtn{position:absolute; right:12px; top:12px; z-index:500; min-height:44px; padding:0 14px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--fg); font:800 13px var(--body); cursor:pointer}
+.leaflet-container{font-family:var(--body)}
+.fw-pin{background:none; border:0}
+.fw-pin .inner{transform-origin:50% 100%; transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s}
+.fw-pin.big .inner{transform:scale(1.7)}
+.fw-pin.dim .inner{opacity:.4}
+.fw-pin svg{display:block; overflow:visible; filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+button:focus-visible, a:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:20px; display:flex; flex-direction:column; gap:14px; min-width:0}
+.card h2{margin:0; font-family:var(--display); font-weight:600; font-size:20px; line-height:1.25}
+.card .addr{color:var(--muted); font-weight:600; font-size:14px; margin-top:-8px}
+.eyebrow{display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--muted)}
+.eyebrow svg{width:18px; height:18px; color:var(--fg)}
+.scoreline{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
+.dots{display:inline-flex; gap:4px; vertical-align:middle}
+.dots i{width:12px; height:12px; border-radius:50%; background:var(--line); display:inline-block}
+.card .dots i{width:16px; height:16px}
+.num{font-variant-numeric:tabular-nums; font-weight:800}
+.status{display:inline-flex; align-items:center; gap:7px; font-weight:800; font-size:13px; padding:4px 11px 4px 8px; border-radius:999px; background:var(--bg); border:1px solid var(--line); white-space:nowrap}
+.status i{width:11px; height:11px; border-radius:50%; display:inline-block}
+.check{font-size:12px; font-weight:700; padding:3px 9px; border-radius:6px; white-space:nowrap}
+.check.ok{background:var(--accent-soft); color:var(--accent)}
+.check.wait{background:var(--sun); color:#14213D}
+.summary{margin:0; font-weight:600}
+dl{margin:0; display:grid; grid-template-columns:110px minmax(0,1fr); gap:8px 12px; font-size:14px}
+dt{color:var(--muted); font-weight:700} dd{margin:0}
+.improve{background:var(--accent-soft); border-radius:12px; padding:10px 12px; font-size:14px}
+.improve b{display:block; font-size:12px; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px}
+.alt{display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px dashed var(--line); border-radius:12px; padding:10px 12px; font-size:14px}
+.btn{border:0; background:var(--accent); color:#fff; font:800 13px var(--body); padding:10px 14px; border-radius:10px; cursor:pointer; min-height:40px; white-space:nowrap; text-decoration:none; display:inline-flex; align-items:center; justify-content:center}
+.btn.ghost{background:transparent; color:var(--accent); border:2px solid var(--accent)}
+.legend{display:flex; flex-direction:column; gap:8px; font-size:14px}
+.legend div{display:flex; align-items:center; gap:10px}
+.legend i{width:14px; height:14px; border-radius:50%; flex:none}
+.hint{margin:0; color:var(--muted)}
+.toolbar{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px}
+.toolbar h2{margin:0; font-family:var(--display); font-weight:600; font-size:20px}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{display:inline-flex; align-items:center; gap:7px; min-height:40px; padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--fg); font:700 14px var(--body); cursor:pointer}
+.chip svg{width:16px; height:16px}
+.chip[aria-pressed="true"]{background:var(--fg); color:var(--bg); border-color:var(--fg)}
+.tablebox{background:var(--surface); border:1px solid var(--line); border-radius:18px; overflow-x:auto}
+table{width:100%; min-width:1040px; border-collapse:collapse; font-size:14px}
+th{text-align:left; font-size:12px; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); font-weight:800; padding:14px; border-bottom:1px solid var(--line); white-space:nowrap}
+td{padding:14px; border-bottom:1px solid var(--line); vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer} tbody tr:hover{background:var(--bg)} tbody tr.sel{background:var(--accent-soft)}
+td.name button{all:unset; cursor:pointer; font-weight:800; font-size:15px; display:flex; align-items:flex-start; gap:10px}
+td.name button:hover span{text-decoration:underline; text-decoration-color:var(--accent); text-underline-offset:3px}
+td.name button:focus-visible{outline:3px solid var(--accent); outline-offset:3px; border-radius:6px}
+td.name svg{width:26px; height:26px; flex:none; padding:4px; border-radius:8px; background:var(--bg)}
+td.what{max-width:330px}
+td .sub{display:block; color:var(--muted); font-size:12px; font-weight:600; margin-top:3px}
+td a.gm{color:var(--accent); font-weight:700; font-size:13px; white-space:nowrap}
+.foot{color:var(--muted); font-size:13px; margin:0; max-width:75ch}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="g-pharmacy" viewBox="-10 -10 20 20"><path d="M-3 -8h6v5h5v6h-5v5h-6v-5h-5v-6h5z" fill="currentColor"/></symbol>
+  <symbol id="g-shelter" viewBox="-10 -10 20 20"><path d="M-8.5 -0.5 L0 -8 L8.5 -0.5 M-6 -2.5 V8 H6 V-2.5 M0 -3 V5 M-3.2 2 L0 5 L3.2 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="g-school" viewBox="-10 -10 20 20"><path d="M-9.5 -3 L0 -7.5 L9.5 -3 L0 1.5 Z" fill="currentColor"/><path d="M-5.5 -0.5 V4.5 C-5.5 7.5 5.5 7.5 5.5 4.5 V-0.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.5 -3 V4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+</svg>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg width="84" height="60" viewBox="0 0 420 300" aria-hidden="true">
+        <circle cx="220" cy="160" r="140" fill="#FFD84D"/>
+        <path d="M95 250 V210 H135 V170 H175 V130 H215 V250 Z" fill="#F04438"/>
+        <path d="M215 130 L400 250 H215 Z" fill="#12B76A"/>
+        <path d="M14 250 H406" stroke="#14213D" stroke-width="10" stroke-linecap="round"/>
+        <g transform="translate(173,15) scale(0.42)">
+          <path d="M100 10 C50 10 15 48 15 98 C15 160 100 250 100 250 C100 250 185 160 185 98 C185 48 150 10 100 10 Z" fill="#1F5BFF"/>
+          <circle cx="100" cy="98" r="44" fill="#FFFFFF"/>
+        </g>
+        <g transform="translate(25,195) scale(0.55)">
+          <path d="M20 50 A30 30 0 0 1 50 20 V50 Z" fill="#14213D"/>
+          <path d="M18 54 H82 C82 70 70 76 50 76 C30 76 18 70 18 54 Z" fill="#14213D"/>
+          <path d="M82 54 L90 30 H98" fill="none" stroke="#14213D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="30" cy="88" r="9" fill="#14213D"/>
+          <circle cx="70" cy="88" r="9" fill="#14213D"/>
+        </g>
+        <g transform="translate(320,198) rotate(33) scale(-0.72,0.72) translate(-50,-98)">
+          <circle cx="56" cy="14" r="10" fill="#14213D"/>
+          <path d="M50 30 L44 58 H68 L76 84" fill="none" stroke="#14213D" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M48 40 H66" fill="none" stroke="#14213D" stroke-width="9" stroke-linecap="round"/>
+          <path d="M30 52 A24 24 0 1 0 64 80" fill="none" stroke="#14213D" stroke-width="9" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <div><h1><b>FREE</b><span>WAY</span></h1><p>Мапа доступності · центр Львова</p></div>
+    </div>
+    <span class="demo">Демо-версія з прикладами</span>
+  </header>
+  <div class="stats" id="stats"></div>
+  <section class="mapgrid">
+    <div class="mapbox" id="mapbox">
+      <div id="map" aria-label="Карта центру Львова з мітками закладів"></div>
+      <button type="button" class="allbtn" id="zall">Усі заклади</button>
+    </div>
+    <aside class="card" id="card" aria-live="polite"></aside>
+  </section>
+  <section style="display:flex; flex-direction:column; gap:14px">
+    <div class="toolbar">
+      <h2>Заклади на мапі</h2>
+      <div class="chips" role="group" aria-label="Фільтр за типом">
+        <button type="button" class="chip" data-f="all" aria-pressed="true">Усі</button>
+        <button type="button" class="chip" data-f="pharmacy" aria-pressed="false"><svg aria-hidden="true"><use href="#g-pharmacy"/></svg>Аптеки</button>
+        <button type="button" class="chip" data-f="shelter" aria-pressed="false"><svg aria-hidden="true"><use href="#g-shelter"/></svg>Укриття</button>
+        <button type="button" class="chip" data-f="school" aria-pressed="false"><svg aria-hidden="true"><use href="#g-school"/></svg>Навчальні заклади</button>
+      </div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Заклад</th><th>Тип</th><th>Адреса</th><th>Доступність</th><th>Статус</th><th>Що важливо знати</th><th>Перевірка</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="foot">Це приклад того, як працюватиме мапа FREEWAY. Назви закладів, оцінки й описи вигадані для демонстрації, а мітки стоять на справжніх вулицях орієнтовно. Справжні дані з'являться після перевірки учнями за чек-листом. Карта: © Esri, © учасники OpenStreetMap.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+  var STATUS = {
+    5:{name:'Повністю доступно', color:'#0E9F5C', ink:'#FFFFFF', hint:'Можна дістатися й користуватися самостійно'},
+    4:{name:'Доступно з допомогою', color:'#6CBF2B', ink:'#14213D', hint:'Є пандус чи ліфт, але інколи потрібен супровід'},
+    3:{name:'Частково доступно', color:'#F2B705', ink:'#14213D', hint:'Доступна лише частина приміщення'},
+    2:{name:'Важкодоступно', color:'#F2711C', ink:'#14213D', hint:'Без сторонньої допомоги не обійтися'},
+    1:{name:'Недоступно', color:'#DE3528', ink:'#FFFFFF', hint:'Людина на кріслі колісному сюди не потрапить'}
+  };
+  var TYPES = { pharmacy:'Аптека', shelter:'Укриття', school:'Навчальний заклад' };
+
+  // Demo places: names and ratings are invented; coordinates are approximate points on real streets.
+  var PLACES = [
+    { id:'p1', type:'pharmacy', name:'Аптека «Зелений хрест»', address:'просп. Свободи, 18', lat:49.84185, lng:24.02745, score:5,
+      check:{ok:true, text:'Перевірено командою', date:'03.10.2026'},
+      summary:'Вхід на рівні тротуару, автоматичні двері, низька каса. Зручно з кріслом колісним і з коляскою.',
+      details:[['Вхід','Без сходинок, автоматичні двері 110 см'],['Всередині','Проходи між стелажами від 100 см'],['Каса','Окреме віконце на висоті 80 см'],['Коляска','Заїжджає вільно'],['Додатково','Тактильна смуга біля входу, працює цілодобово']] },
+    { id:'p2', type:'pharmacy', name:'Аптека «Арніка»', address:'вул. Городоцька, 45', lat:49.84125, lng:24.01640, score:2,
+      check:{ok:false, text:'Очікує перевірки', date:'повідомлення від 07.10.2026'},
+      summary:'Три сходинки біля входу, пандуса немає. Дзвінок для виклику фармацевта висить на висоті 150 см.',
+      details:[['Вхід','3 сходинки по 17 см, без поручня'],['Двері','80 см, відчиняються важко'],['Коляска','Потрібна допомога, щоб підняти'],['Джерело','Повідомлення мешканки через Google-форму']],
+      improve:'Опустити дзвінок до 90 см і поставити мобільний пандус.', alt:'p1' },
+    { id:'p3', type:'shelter', name:'Укриття «Паркінг на Підвальній»', address:'вул. Підвальна, 9', lat:49.84170, lng:24.03520, score:4,
+      check:{ok:true, text:'Перевірено командою', date:'05.10.2026'},
+      summary:'Підземний паркінг з ліфтом і пологим заїздом. Під час відключення світла ліфт не працює, тож людині на кріслі колісному знадобиться супровід.',
+      details:[['Вхід','Ліфт і пологий заїзд з тротуару'],['Без світла','Ліфт стоїть, лишається автомобільний пандус (крутий)'],['Місткість','Близько 250 осіб'],['Обладнання','Вода, лавки, генератор, аптечка, Wi-Fi'],['Вбиральня','Є, але не адаптована'],['Відкрито','Під час кожної тривоги, цілодобово']],
+      improve:'Додати поручні на автомобільному пандусі й адаптовану вбиральню.' },
+    { id:'p4', type:'shelter', name:'Укриття в підвалі житлового будинку', address:'вул. Галицька, 14', lat:49.84005, lng:24.03010, score:1,
+      check:{ok:true, text:'Перевірено командою', date:'05.10.2026'},
+      summary:'Спуск — 14 крутих сходинок без поручня. Людина на кріслі колісному чи з коляскою сама сюди не потрапить.',
+      details:[['Вхід','14 сходинок, ширина проходу 70 см'],['Обладнання','Є світло й лавки, води немає'],['Місткість','Близько 40 осіб'],['Відкрито','Ключ у мешканців, інколи зачинено']],
+      improve:'Встановити поручні з обох боків і повісити табличку з адресою найближчого доступного укриття.', alt:'p3' },
+    { id:'p5', type:'school', name:'Ліцей «Обрій»', address:'вул. Шевченка, 30', lat:49.83720, lng:24.02090, score:3,
+      check:{ok:true, text:'Перевірено командою', date:'01.10.2026'},
+      summary:'Пандус є лише біля бічного входу з двору, ліфта немає. Доступний тільки перший поверх.',
+      details:[['Вхід','Пандус з двору, вказівника з вулиці немає'],['Поверхи','Доступний лише 1-й поверх'],['Вбиральня','Адаптована, на 1-му поверсі'],['Укриття','Підвал, 8 сходинок'],['Коляска','Заїжджає через бічний вхід']],
+      improve:'Повісити вказівник до пандуса біля головного входу.' },
+    { id:'p6', type:'school', name:'Початкова школа «Сонях»', address:'вул. Личаківська, 22', lat:49.84050, lng:24.04230, score:5,
+      check:{ok:true, text:'Перевірено командою', date:'02.10.2026'},
+      summary:'Новий корпус: пандус і ліфт, адаптовані вбиральні на кожному поверсі, укриття з пологим спуском.',
+      details:[['Вхід','Пандус з поручнями, двері 120 см'],['Поверхи','Ліфт на всі 3 поверхи'],['Вбиральня','Адаптована на кожному поверсі'],['Укриття','Пологий спуск, вода, генератор, 300 місць'],['Додатково','Тактильна плитка й контрастні сходи']] }
+  ];
+  var byId = {}; PLACES.forEach(function(p){ byId[p.id] = p; });
+  var sel = null, filter = 'all';
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function gmaps(p){ return 'https://www.google.com/maps/search/?api=1&query=' + p.lat + ',' + p.lng; }
+  function dots(n){ var c = STATUS[n].color, s = '<span class="dots" aria-hidden="true">'; for (var i=1;i<=5;i++) s += '<i' + (i<=n ? ' style="background:'+c+'"' : '') + '></i>'; return s + '</span>'; }
+  function statusPill(n){ return '<span class="status"><i style="background:'+STATUS[n].color+'"></i>'+STATUS[n].name+'</span>'; }
+
+  // map
+  var map = L.map('map', { zoomControl:true, scrollWheelZoom:true }).setView([49.8405, 24.0290], 15);
+  // Tile providers tried in order. Esri needs no key and no Referer, so it works from a local file;
+  // OpenStreetMap works once the page is hosted on a website. If one keeps failing, switch to the next.
+  var PROVIDERS = [
+    { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      opt:{ maxZoom:19, attribution:'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' } },
+    { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      opt:{ maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' } }
+  ];
+  var tileLayer = null, providerIdx = -1, tileErrors = 0;
+  function useProvider(i){
+    if (i >= PROVIDERS.length) return;
+    if (tileLayer) map.removeLayer(tileLayer);
+    providerIdx = i; tileErrors = 0;
+    tileLayer = L.tileLayer(PROVIDERS[i].url, PROVIDERS[i].opt);
+    tileLayer.on('tileerror', function(){ if (++tileErrors > 4) useProvider(providerIdx + 1); });
+    tileLayer.on('tileload', function(){ tileErrors = 0; });
+    tileLayer.addTo(map);
+  }
+  useProvider(0);
+  var bounds = L.latLngBounds(PLACES.map(function(p){ return [p.lat, p.lng]; }));
+  function fitAll(){ map.flyToBounds(bounds, { padding:[50,50], duration: reduce ? 0 : 0.8 }); }
+
+  var markers = {};
+  PLACES.forEach(function(p){
+    var st = STATUS[p.score];
+    var html = '<div class="inner"><svg width="40" height="50" viewBox="-20 -48 40 50">' +
+      '<ellipse cx="0" cy="0" rx="7" ry="3" fill="#14213D" opacity=".25"></ellipse>' +
+      '<path d="M0 0 C-5 -11 -17 -19 -17 -32 A17 17 0 1 1 17 -32 C17 -19 5 -11 0 0 Z" fill="'+st.color+'" stroke="#14213D" stroke-width="2.5"></path>' +
+      '<use href="#g-'+p.type+'" x="-10" y="-42" width="20" height="20" style="color:'+st.ink+'"></use></svg></div>';
+    var icon = L.divIcon({ className:'fw-pin', html:html, iconSize:[40,50], iconAnchor:[20,48] });
+    var m = L.marker([p.lat, p.lng], { icon:icon, title:p.name, alt:p.name + ', ' + st.name, keyboard:true, riseOnHover:true }).addTo(map);
+    m.on('click', function(){ select(p.id, {scroll:false}); });
+    markers[p.id] = m;
+  });
+  function updateMarkers(){
+    PLACES.forEach(function(p){
+      var m = markers[p.id], visible = filter==='all' || filter===p.type;
+      if (visible && !map.hasLayer(m)) m.addTo(map);
+      if (!visible && map.hasLayer(m)) map.removeLayer(m);
+      var el = m.getElement(); if (!el) return;
+      el.classList.toggle('big', sel===p.id);
+      el.classList.toggle('dim', !!sel && sel!==p.id);
+      m.setZIndexOffset(sel===p.id ? 1000 : 0);
+    });
+  }
+  document.getElementById('zall').addEventListener('click', function(){ select(null); fitAll(); });
+
+  // stats
+  (function(){
+    var c = {5:0,4:0,3:0,2:0,1:0}; PLACES.forEach(function(p){ c[p.score]++; });
+    var h = '<span class="stat"><i style="background:var(--accent)"></i>' + PLACES.length + ' об’єктів</span>';
+    [5,4,3,2,1].forEach(function(n){ if (c[n]) h += '<span class="stat"><i style="background:'+STATUS[n].color+'"></i>'+c[n]+' · '+STATUS[n].name.toLowerCase()+'</span>'; });
+    document.getElementById('stats').innerHTML = h;
+  })();
+
+  // table
+  var rowsEl = document.getElementById('rows');
+  function renderRows(){
+    rowsEl.innerHTML = PLACES.filter(function(p){ return filter==='all' || filter===p.type; }).map(function(p){
+      var st = STATUS[p.score];
+      return '<tr data-id="'+p.id+'"'+(sel===p.id?' class="sel"':'')+'>' +
+        '<td class="name"><button type="button"><svg aria-hidden="true"><use href="#g-'+p.type+'"/></svg><span>'+p.name+'</span></button></td>' +
+        '<td>'+TYPES[p.type]+'</td>' +
+        '<td>'+p.address+'<span class="sub"><a class="gm" href="'+gmaps(p)+'" target="_blank" rel="noopener">У Google Картах ↗</a></span></td>' +
+        '<td style="white-space:nowrap">'+dots(p.score)+' <span class="num">'+p.score+'/5</span></td>' +
+        '<td>'+statusPill(p.score)+'<span class="sub">'+st.hint+'</span></td>' +
+        '<td class="what">'+p.summary+'</td>' +
+        '<td><span class="check '+(p.check.ok?'ok':'wait')+'">'+p.check.text+'</span><span class="sub">'+p.check.date+'</span></td></tr>';
+    }).join('');
+  }
+  rowsEl.addEventListener('click', function(e){
+    if (e.target.closest('a')) return;
+    var tr = e.target.closest('tr[data-id]'); if (tr) select(tr.getAttribute('data-id'), {scroll:true});
+  });
+
+  // card
+  var card = document.getElementById('card');
+  function renderCard(){
+    if (!sel){
+      card.innerHTML = '<h2>Оберіть заклад</h2><p class="hint">Натисніть мітку на карті або назву в таблиці, щоб наблизити місце й побачити, чи можна туди дістатися.</p><div class="legend">' +
+        [5,4,3,2,1].map(function(n){ return '<div><i style="background:'+STATUS[n].color+'"></i><span><b>'+n+' · '+STATUS[n].name+'.</b> '+STATUS[n].hint+'</span></div>'; }).join('') + '</div>';
+      return;
+    }
+    var p = byId[sel];
+    var h = '<div class="eyebrow"><svg aria-hidden="true"><use href="#g-'+p.type+'"/></svg>'+TYPES[p.type]+'<span class="check '+(p.check.ok?'ok':'wait')+'">'+p.check.text+'</span></div>' +
+      '<h2>'+p.name+'</h2><div class="addr">'+p.address+'</div>' +
+      '<div class="scoreline">'+dots(p.score)+'<span class="num">'+p.score+' з 5</span>'+statusPill(p.score)+'</div>' +
+      '<p class="summary">'+p.summary+'</p><dl>' + p.details.map(function(d){ return '<dt>'+d[0]+'</dt><dd>'+d[1]+'</dd>'; }).join('') + '<dt>Перевірка</dt><dd>'+p.check.date+'</dd></dl>';
+    if (p.improve) h += '<div class="improve"><b>Що варто покращити</b>'+p.improve+'</div>';
+    if (p.alt){ var a = byId[p.alt]; h += '<div class="alt"><span>Найближче доступне: <b>'+a.name+'</b> ('+a.score+'/5)</span><button type="button" class="btn" data-alt="'+a.id+'">Показати</button></div>'; }
+    h += '<a class="btn ghost" href="'+gmaps(p)+'" target="_blank" rel="noopener">Відкрити в Google Картах ↗</a>';
+    card.innerHTML = h;
+  }
+  card.addEventListener('click', function(e){ var b = e.target.closest('[data-alt]'); if (b) select(b.getAttribute('data-alt'), {scroll:false}); });
+
+  function select(id, opts){
+    sel = id;
+    if (id && filter!=='all' && byId[id].type!==filter) setFilter('all');
+    renderRows(); renderCard(); updateMarkers();
+    if (id){
+      var p = byId[id];
+      if (opts && opts.scroll) document.getElementById('mapbox').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'});
+      map.flyTo([p.lat, p.lng], 18, { duration: reduce ? 0 : 1.1 });
+    }
+  }
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.chip'));
+  function setFilter(f){
+    filter = f;
+    chips.forEach(function(c){ c.setAttribute('aria-pressed', c.getAttribute('data-f')===f ? 'true' : 'false'); });
+    if (sel && f!=='all' && byId[sel].type!==f){ sel = null; renderCard(); }
+    renderRows(); updateMarkers();
+  }
+  chips.forEach(function(c){ c.addEventListener('click', function(){ setFilter(c.getAttribute('data-f')); }); });
+
+  renderRows(); renderCard(); updateMarkers();
+  map.fitBounds(bounds, { padding:[50,50] });
+})();
+</script>
+</body>
+</html>
